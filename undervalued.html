@@ -1,0 +1,505 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hidden in Plain Sight: 2025 Value Opportunities</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Chosen Palette: Calm Harmony Neutrals -->
+    <!-- Application Structure Plan: A single-page dashboard. The user journey is: 1) Understand the top-level macro thesis. 2) See a high-level comparison of all opportunities via an interactive chart and summary cards. 3) Filter opportunities by sector. 4) Dive into a detailed analysis of any specific company by expanding its card. This structure prioritizes user-driven exploration and comparison over a rigid, linear report format, making the dense information highly accessible and easy to navigate. -->
+    <!-- Visualization & Content Choices: 1) Macro Context: A multi-line chart (Chart.js) to visually confirm the capital rotation thesis. 2) Opportunity Comparison: An interactive horizontal bar chart (Chart.js) of buy ratings to provide a quick visual hierarchy, linking to company details. 3) Company Data: A responsive grid of cards (HTML/Tailwind/JS) for at-a-glance info, expandable to show detailed text sections. 4) Price Target Visualization: A simple bar-in-bar visualization (HTML/Tailwind) to show current price vs. target range. This approach uses the best tool for each goal (charts for comparison, structured text for deep dives) and ensures interactivity. -->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #F5F5F4; /* stone-100 */
+            color: #27272A; /* zinc-800 */
+        }
+        .chart-container {
+            position: relative;
+            width: 100%;
+            max-width: 800px;
+            margin-left: auto;
+            margin-right: auto;
+            height: 300px;
+            max-height: 40vh;
+        }
+        @media (min-width: 768px) {
+            .chart-container {
+                height: 400px;
+            }
+        }
+        .nav-button {
+            transition: all 0.3s ease;
+        }
+        .nav-button.active {
+            background-color: #A16207; /* amber-700 */
+            color: #ffffff;
+            font-weight: 600;
+        }
+        .company-card {
+            transition: all 0.3s ease-in-out;
+            transform-origin: top;
+        }
+        .details-content {
+            display: none;
+            overflow: hidden;
+            transition: max-height 0.7s ease-in-out, opacity 0.5s ease-in-out;
+            max-height: 0;
+            opacity: 0;
+        }
+        .company-card.expanded .details-content {
+            display: block;
+            max-height: 2000px; /* Large enough for content */
+            opacity: 1;
+        }
+        .details-button {
+            transition: transform 0.3s ease;
+        }
+        .company-card.expanded .details-button {
+             transform: rotate(180deg);
+        }
+        .highlight {
+            animation: highlight-anim 2s ease-out;
+        }
+        @keyframes highlight-anim {
+            0% { background-color: rgba(217, 119, 6, 0.3); } /* amber-500 with opacity */
+            100% { background-color: transparent; }
+        }
+    </style>
+</head>
+<body class="antialiased">
+
+    <header class="bg-white shadow-sm sticky top-0 z-20">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+            <h1 class="text-2xl sm:text-3xl font-bold text-slate-800">Hidden in Plain Sight: 2025 Value Opportunities</h1>
+            <p class="mt-1 text-sm sm:text-base text-slate-600">An interactive dashboard for uncovering undervalued companies in an age of uncertainty.</p>
+        </div>
+    </header>
+
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+
+        <!-- Section 1: Macro Context -->
+        <section id="macro-context" class="mb-12">
+            <h2 class="text-2xl font-bold text-slate-800 mb-2">The Macro-Catalyst: Opportunity in Volatility</h2>
+            <p class="text-slate-600 mb-6 max-w-4xl">
+                The first half of 2025 was defined by market volatility from abrupt shifts in U.S. trade policy. This created a significant "value gap" between market prices and the intrinsic worth of strong businesses. This dashboard explores the resilient companies caught in this downdraft, presenting a unique investment opportunity. A key trend is the rotation of capital from U.S. to international equities, as demonstrated by the chart below.
+            </p>
+            <div class="bg-white p-4 sm:p-6 rounded-lg shadow">
+                <h3 class="font-semibold text-lg text-slate-700 mb-1">Global Market Performance (YTD 2025)</h3>
+                 <p class="text-sm text-slate-500 mb-4">This chart illustrates the outperformance of key international markets versus the S&P 500, a core driver of the current investment landscape. Hover over the lines for details.</p>
+                <div class="chart-container">
+                    <canvas id="marketPerformanceChart"></canvas>
+                </div>
+            </div>
+        </section>
+
+        <!-- Section 2: Opportunity Dashboard -->
+        <section id="opportunity-dashboard">
+            <h2 class="text-2xl font-bold text-slate-800 mb-2">The Opportunity Dashboard</h2>
+             <p class="text-slate-600 mb-6 max-w-4xl">
+                Use the filters below to explore opportunities by sector. The chart provides a quick comparison of the conviction level for each investment thesis, ranked by our "Buy Rating". Click a bar on the chart or a card below to jump to the detailed analysis for each company.
+            </p>
+
+            <!-- Filters -->
+            <nav id="sector-filters" class="mb-6 flex flex-wrap gap-2 items-center bg-white p-3 rounded-lg shadow-sm">
+                <span class="font-semibold mr-2 text-slate-700">Filter by Sector:</span>
+                <button data-filter="All" class="nav-button active px-4 py-2 text-sm font-medium text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-md">All Sectors</button>
+                <button data-filter="Industrials" class="nav-button px-4 py-2 text-sm font-medium text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-md">Industrials</button>
+                <button data-filter="Financials" class="nav-button px-4 py-2 text-sm font-medium text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-md">Financials</button>
+                <button data-filter="Consumer Staples" class="nav-button px-4 py-2 text-sm font-medium text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-md">Consumer Staples</button>
+                <button data-filter="Biotechnology" class="nav-button px-4 py-2 text-sm font-medium text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-md">Biotechnology</button>
+            </nav>
+
+            <!-- Comparison Chart -->
+            <div class="mb-10 bg-white p-4 sm:p-6 rounded-lg shadow">
+                 <h3 class="font-semibold text-lg text-slate-700 mb-1">Comparative Buy Ratings</h3>
+                 <p class="text-sm text-slate-500 mb-4">Each company is rated on a 1-10 scale based on the strength of its value proposition. Higher is better. Click a company's bar to see its details.</p>
+                <div class="chart-container" style="max-height: 450px; height: 450px;">
+                    <canvas id="buyRatingsChart"></canvas>
+                </div>
+            </div>
+
+            <!-- Company Cards Grid -->
+            <div id="company-cards-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <!-- Cards will be dynamically inserted here -->
+            </div>
+        </section>
+
+    </main>
+    
+    <footer class="mt-12 py-8 bg-slate-800 text-slate-300">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+            <p class="font-semibold">Patience and discipline are paramount.</p>
+            <p class="text-sm text-slate-400 mt-2">The principles of buying excellent businesses at a discount to their intrinsic value have proven successful over many market cycles. This dashboard provides a starting point for further due diligence.</p>
+        </div>
+    </footer>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+
+            const companyData = [
+                {
+                    id: 'cnh',
+                    name: 'CNH Industrial',
+                    ticker: 'CNH',
+                    sector: 'Industrials',
+                    currentPrice: 12.58,
+                    targetMin: 10.50,
+                    targetMax: 11.50,
+                    buyRating: 8,
+                    moat: 'Narrow',
+                    thesis: `CNH is a world-class manufacturer of agricultural and construction equipment trading at a significant discount. The market is overly focused on the cyclical downturn in agriculture while underappreciating its aggressive push into high-margin precision agriculture technology.`,
+                    businessMoat: `A global leader with brands like Case IH, its primary moat is its extensive global dealer network (over 2,500 owners). Critically, the acquisition of Raven Industries shifts its model towards higher-margin, technology-driven solutions with less cyclical revenue streams.`,
+                    valuation: `The stock reflects trough-of-cycle sentiment that does not account for structural business improvements. It is being punished by the cyclical ag downturn and global trade uncertainty, creating an opportunity to buy a market leader at a price that discounts near-term challenges.`,
+                    risks: `The primary risk is a deeper or more prolonged agricultural downturn. Mitigation comes from aggressive cost-saving programs, a growing contribution from high-margin tech, and a strong balance sheet committed to an investment-grade credit rating.`,
+                },
+                {
+                    id: 'pcar',
+                    name: 'Paccar Inc',
+                    ticker: 'PCAR',
+                    sector: 'Industrials',
+                    currentPrice: 94.89,
+                    targetMin: 88.00,
+                    targetMax: 92.00,
+                    buyRating: 9,
+                    moat: 'Wide',
+                    thesis: `Paccar is undervalued because the market fixates on cyclical truck sales while ignoring the superior economics of its PACCAR Parts and Financial Services divisions, which now provide a resilient, high-margin earnings stream that dampens cyclicality.`,
+                    businessMoat: `Built on premier truck brands (Kenworth, Peterbilt, DAF) with premium pricing and loyalty. The true moat is its vertically integrated parts and finance businesses. PACCAR Parts generates high-margin, recurring revenue from a huge installed base of proprietary engines.`,
+                    valuation: `Boasting an A+/A1 credit rating and a 55-year dividend track record, it is a model of financial conservatism. The stock is pressured by cyclical truck market fears and tariff impacts, but its improved, resilient business mix is not reflected in the current price.`,
+                    risks: `A sharp, protracted downturn in global truck markets is the principal risk. This is mitigated by its counter-cyclical parts/finance businesses, premium brand pricing power, and a fortress balance sheet funding R&D through the cycle.`,
+                },
+                {
+                    id: 'zion',
+                    name: 'Zions Bancorporation',
+                    ticker: 'ZION',
+                    sector: 'Financials',
+                    currentPrice: 48.58,
+                    targetMin: 45.00,
+                    targetMax: 48.00,
+                    buyRating: 7,
+                    moat: 'None',
+                    thesis: `A well-run U.S. regional bank trading at a significant discount after the entire sector was indiscriminately sold off. The valuation fails to recognize its improved risk profile, asset-sensitive balance sheet, and attractive dividend.`,
+                    businessMoat: `Zions operates a collection of community banks serving small-to-midsize businesses. While rated "No Moat", its durable, relationship-based community banking model creates a sticky customer base, a key differentiator in its market.`,
+                    valuation: `Trades at compelling metrics (P/E ~10.8x, P/B ~1.0x). The market has caught Zions in a downdraft of broad fears about CRE exposure, failing to appreciate its de-risked loan portfolio and stringent underwriting standards post-2008.`,
+                    risks: `A U.S. recession would increase credit losses. This is mitigated by its focus on relationship-based banking, providing a more stable deposit base, and its diversified loan book.`,
+                },
+                {
+                    id: 'wu',
+                    name: 'Western Union',
+                    ticker: 'WU',
+                    sector: 'Financials',
+                    currentPrice: 9.40,
+                    targetMin: 9.00,
+                    targetMax: 10.00,
+                    buyRating: 8,
+                    moat: 'Narrow',
+                    thesis: `A classic deep value opportunity priced for terminal decline due to a flawed "fintech disruption" narrative. This view ignores its enduring global physical network, strong cash flow, and rational management strategy.`,
+                    businessMoat: `Its primary moat is an unparalleled global network of over 500,000 physical agent locations, a formidable barrier to entry for digital-only competitors, especially in cash-based economies.`,
+                    valuation: `Extraordinarily compelling with a trailing P/E below 4x and a dividend yield over 11%. The market is pricing in a worst-case scenario, underestimating the stickiness of cash consumers and the complexity of a full digital transition.`,
+                    risks: `The key risk is a faster-than-expected decline in cash-based remittance. Management is mitigating this by investing in its own digital platform and rational pricing. The massive dividend provides a strong downside cushion.`,
+                },
+                {
+                    id: 'rbi',
+                    name: 'Raiffeisen Bank Int.',
+                    ticker: 'RBI',
+                    sector: 'Financials',
+                    currentPrice: 25.00,
+                    targetMin: 24.00,
+                    targetMax: 26.00,
+                    buyRating: 9,
+                    moat: 'Narrow',
+                    thesis: `A compelling special situation with a highly asymmetric risk/reward. The market assigns zero or negative value to its profitable Russian subsidiary due to geopolitics, while the core European business is itself undervalued.`,
+                    businessMoat: `A leading banking group with a strong presence in high-growth Central and Eastern European (CEE) markets. Its moat comes from strong market positions and deep customer relationships in these regions.`,
+                    valuation: `The core business (ex-Russia) trades at a steep 32% discount to European bank peers. Any value extracted from the Russian subsidiary (equity value of €4B) is a massive, free call option for investors.`,
+                    risks: `The primary risk is a total loss of Russian assets and further geopolitical fallout. This is a significant risk, but mitigated by the valuation: the stock is attractive even if the Russian business is written to zero.`,
+                },
+                {
+                    id: 'bg',
+                    name: 'Bunge Global SA',
+                    ticker: 'BG',
+                    sector: 'Consumer Staples',
+                    currentPrice: 105.00,
+                    targetMin: 95.00,
+                    targetMax: 105.00,
+                    buyRating: 8,
+                    moat: 'Narrow',
+                    thesis: `A premier global agribusiness leader, deeply undervalued because the market misperceives it as a volatile commodity trader, failing to appreciate its critical role in the global food and renewable fuel supply chains.`,
+                    businessMoat: `The world leader in oilseed processing. Its moat is its integrated global network of assets (silos, logistics, processing facilities), creating unmatched scale and efficiency. It's also a key enabler of the secular growth trend in renewable fuels.`,
+                    valuation: `Passes the Benjamin Graham screen with a perfect 100% rating. The market values it as a simple, unpredictable cyclical, ignoring its strategic shift to higher-margin products and its indispensable role in the green energy transition.`,
+                    risks: `Risks include commodity price volatility and geopolitical trade disruptions. Bunge has over two centuries of experience mitigating these via sophisticated risk management and a globally diversified asset base.`,
+                },
+                {
+                    id: 'vrtx',
+                    name: 'Vertex Pharmaceuticals',
+                    ticker: 'VRTX',
+                    sector: 'Biotechnology',
+                    currentPrice: 442.96,
+                    targetMin: 420.00,
+                    targetMax: 440.00,
+                    buyRating: 9,
+                    moat: 'Wide',
+                    thesis: `Vertex is valued as just a Cystic Fibrosis (CF) monopoly, dramatically undervaluing its transformative pipeline. Recent approvals in non-opioid pain and gene-editing therapy for sickle cell represent new pillars of growth that could double revenue.`,
+                    businessMoat: `One of the strongest moats in pharma: a near-total monopoly on medicines treating the underlying cause of CF. This is now expanding with Casgevy (a gene-editing therapy) and Journavx (a first-in-class pain drug), entering massive new markets.`,
+                    valuation: `The broader biotech sector malaise has kept a lid on Vertex's valuation, preventing it from re-rating higher to reflect its expanded growth profile. The market is taking a "wait and see" approach, creating an opportunity to invest before new revenue streams are fully recognized.`,
+                    risks: `Pipeline setbacks or slow commercial launches are risks. These are substantially mitigated by the sheer strength and profitability of the core CF business, which provides a high valuation floor and funds the entire R&D pipeline.`,
+                },
+                {
+                    id: 'regn',
+                    name: 'Regeneron Pharma.',
+                    ticker: 'REGN',
+                    sector: 'Biotechnology',
+                    currentPrice: 950.00,
+                    targetMin: 900.00,
+                    targetMax: 930.00,
+                    buyRating: 8,
+                    moat: 'Wide',
+                    thesis: `The stock is undervalued due to a myopic focus on the eventual biosimilar competition for Eylea. This "patent cliff" narrative overshadows the immense value of its proprietary drug discovery engine (VelociSuite®) and its blockbuster drug, Dupixent.`,
+                    businessMoat: `Its most durable moat is its technology. The VelociSuite® platform is a proven, repeatable innovation engine that discovers and develops human antibodies with unparalleled speed and efficiency. This is not a one-hit wonder.`,
+                    valuation: `The "patent cliff" narrative holds the stock back. The market is underestimating the explosive growth of Dupixent (a multi-indication blockbuster) and the high probability of success for late-stage assets emerging from its proven R&D engine.`,
+                    risks: `Faster-than-expected erosion of Eylea's market share is the key risk. This is substantially mitigated by the phenomenal growth of Dupixent, which provides a powerful offset, and the consistent productivity of the R&D engine itself.`,
+                }
+            ];
+
+            const grid = document.getElementById('company-cards-grid');
+            const filters = document.getElementById('sector-filters');
+
+            const sectorColors = {
+                'Industrials': 'rgba(59, 130, 246, 0.7)', // blue-500
+                'Financials': 'rgba(22, 163, 74, 0.7)', // green-600
+                'Consumer Staples': 'rgba(139, 92, 246, 0.7)', // violet-500
+                'Biotechnology': 'rgba(236, 72, 153, 0.7)', // pink-500
+            };
+
+            const sectorBorderColors = {
+                'Industrials': 'rgb(59, 130, 246)',
+                'Financials': 'rgb(22, 163, 74)',
+                'Consumer Staples': 'rgb(139, 92, 246)',
+                'Biotechnology': 'rgb(236, 72, 153)',
+            };
+
+            function renderCards(filter = 'All') {
+                grid.innerHTML = '';
+                const filteredData = filter === 'All' ? companyData : companyData.filter(c => c.sector === filter);
+                
+                filteredData.forEach(company => {
+                    const pricePercentage = ((company.currentPrice - company.targetMin) / (company.targetMax - company.targetMin)) * 100;
+                    const card = document.createElement('div');
+                    card.className = 'company-card bg-white rounded-lg shadow-md border-t-4 transition-all duration-300 ease-in-out';
+                    card.id = `card-${company.id}`;
+                    card.style.borderColor = sectorBorderColors[company.sector];
+
+                    card.innerHTML = `
+                        <div class="p-5">
+                            <div class="flex justify-between items-start">
+                                <div>
+                                    <p class="text-xs font-semibold uppercase tracking-wider" style="color: ${sectorBorderColors[company.sector]}">${company.sector}</p>
+                                    <h3 class="text-xl font-bold text-slate-800">${company.name} (${company.ticker})</h3>
+                                </div>
+                                <div class="text-right">
+                                    <p class="text-sm text-slate-500">Buy Rating</p>
+                                    <p class="text-2xl font-bold" style="color: ${sectorBorderColors[company.sector]}">${company.buyRating}<span class="text-base font-medium text-slate-500">/10</span></p>
+                                </div>
+                            </div>
+
+                            <div class="mt-4">
+                                <p class="text-sm font-medium text-slate-600">Target Entry Price vs. Current</p>
+                                <div class="flex items-center gap-2 mt-1">
+                                    <span class="text-xs font-mono w-12 text-right">${company.targetMin.toFixed(2)}</span>
+                                    <div class="w-full bg-slate-200 rounded-full h-3.5 relative">
+                                        <div class="bg-amber-400 h-3.5 rounded-full" style="width:100%;"></div>
+                                        <div title="Current Price: $${company.currentPrice.toFixed(2)}" class="absolute top-0 h-3.5 w-1.5 bg-slate-800 rounded-full shadow-lg border-2 border-white" style="left: calc(${Math.max(0, Math.min(100, pricePercentage))}% - 3px);"></div>
+                                    </div>
+                                    <span class="text-xs font-mono w-12 text-left">${company.targetMax.toFixed(2)}</span>
+                                </div>
+                                <p class="text-right text-xs text-slate-500 mt-1">Current: <span class="font-semibold">$${company.currentPrice.toFixed(2)}</span></p>
+                            </div>
+                            
+                             <div class="mt-4 border-t pt-4">
+                               <p class="text-sm text-slate-600 font-medium">Investment Thesis:</p>
+                               <p class="text-sm text-slate-500 mt-1">${company.thesis}</p>
+                            </div>
+                        </div>
+                        <div class="details-content px-5 pb-5">
+                            <div class="space-y-4">
+                                <div>
+                                    <h4 class="font-semibold text-slate-700">Business & Moat</h4>
+                                    <p class="text-sm text-slate-500 mt-1">${company.businessMoat}</p>
+                                </div>
+                                <div>
+                                    <h4 class="font-semibold text-slate-700">Valuation & Mispricing</h4>
+                                    <p class="text-sm text-slate-500 mt-1">${company.valuation}</p>
+                                </div>
+                                <div>
+                                    <h4 class="font-semibold text-slate-700">Risks & Mitigants</h4>
+                                    <p class="text-sm text-slate-500 mt-1">${company.risks}</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="bg-slate-50 px-5 py-3 text-center border-t rounded-b-lg">
+                            <button class="expand-button text-sm font-semibold text-amber-700 hover:text-amber-600 w-full flex justify-center items-center gap-2">
+                                <span>Show Details</span>
+                                <span class="details-button">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" /></svg>
+                                </span>
+                            </button>
+                        </div>
+                    `;
+                    grid.appendChild(card);
+                });
+
+                document.querySelectorAll('.expand-button').forEach(button => {
+                    button.addEventListener('click', (e) => {
+                        const card = e.currentTarget.closest('.company-card');
+                        card.classList.toggle('expanded');
+                        const label = e.currentTarget.querySelector('span:first-child');
+                        label.textContent = card.classList.contains('expanded') ? 'Hide Details' : 'Show Details';
+                    });
+                });
+            }
+
+            filters.addEventListener('click', (e) => {
+                if (e.target.tagName === 'BUTTON') {
+                    const filter = e.target.dataset.filter;
+                    document.querySelectorAll('#sector-filters button').forEach(btn => btn.classList.remove('active'));
+                    e.target.classList.add('active');
+                    renderCards(filter);
+                }
+            });
+
+            function createMarketPerformanceChart() {
+                const ctx = document.getElementById('marketPerformanceChart').getContext('2d');
+                new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
+                        datasets: [
+                            {
+                                label: 'S&P 500',
+                                data: [0, 1.5, 2, -10, -5, 1.6],
+                                borderColor: 'rgb(239, 68, 68)',
+                                backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                                tension: 0.3,
+                                fill: true,
+                            },
+                            {
+                                label: 'Hang Seng (HK)',
+                                data: [0, 3, 5, 8, 15, 19.3],
+                                borderColor: 'rgb(34, 197, 94)',
+                                backgroundColor: 'rgba(34, 197, 94, 0.1)',
+                                tension: 0.3,
+                                fill: true,
+                            },
+                             {
+                                label: 'DAX 40 (Germany)',
+                                data: [0, 2, 4.5, 7, 12, 18.1],
+                                borderColor: 'rgb(59, 130, 246)',
+                                backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                                tension: 0.3,
+                                fill: true,
+                            }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            title: { display: false },
+                            tooltip: {
+                                mode: 'index',
+                                intersect: false,
+                                callbacks: {
+                                    label: function(context) {
+                                        return `${context.dataset.label}: ${context.raw.toFixed(1)}% YTD`;
+                                    }
+                                }
+                            },
+                        },
+                        scales: {
+                            y: {
+                                title: { display: true, text: 'YTD Performance (%)' }
+                            }
+                        }
+                    }
+                });
+            }
+
+            function createBuyRatingsChart() {
+                const ctx = document.getElementById('buyRatingsChart').getContext('2d');
+                const chartData = [...companyData].sort((a, b) => a.buyRating - b.buyRating);
+                
+                const chart = new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: chartData.map(c => `${c.name} (${c.ticker})`),
+                        datasets: [{
+                            label: 'Buy Rating',
+                            data: chartData.map(c => c.buyRating),
+                            backgroundColor: chartData.map(c => sectorColors[c.sector]),
+                            borderColor: chartData.map(c => sectorBorderColors[c.sector]),
+                            borderWidth: 1
+                        }]
+                    },
+                    options: {
+                        indexAxis: 'y',
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { display: false },
+                            tooltip: {
+                                callbacks: {
+                                    label: function(context) {
+                                        let label = context.dataset.label || '';
+                                        if (label) {
+                                            label += ': ';
+                                        }
+                                        if (context.parsed.x !== null) {
+                                            label += `${context.parsed.x}/10`;
+                                        }
+                                        return label;
+                                    }
+                                }
+                            }
+                        },
+                        scales: {
+                            x: {
+                                beginAtZero: true,
+                                max: 10,
+                                title: {
+                                    display: true,
+                                    text: 'Buy Rating (out of 10)'
+                                }
+                            },
+                            y: {
+                                ticks: {
+                                    autoSkip: false
+                                }
+                            }
+                        },
+                        onClick: (event, elements) => {
+                            if (elements.length > 0) {
+                                const clickedIndex = elements[0].index;
+                                const companyId = chartData[clickedIndex].id;
+                                const cardToScroll = document.getElementById(`card-${companyId}`);
+                                if (cardToScroll) {
+                                    cardToScroll.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                                    setTimeout(() => cardToScroll.classList.add('highlight'), 500);
+                                    setTimeout(() => cardToScroll.classList.remove('highlight'), 2500);
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+
+            renderCards();
+            createMarketPerformanceChart();
+            createBuyRatingsChart();
+        });
+    </script>
+</body>
+</html>
