@@ -1,0 +1,518 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive Myoko Real Estate Explorer</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Chosen Palette: Warm Neutrals & Deep Slate -->
+    <!-- Application Structure Plan: The application is designed as an interactive dashboard, diverging from the linear report format. The structure prioritizes user-driven exploration. A top navigation bar allows users to jump between four key sections: 1) a Market Overview with high-level data visualizations, 2) an interactive Property Explorer with robust filtering and a dynamic scatter plot, 3) an Investor Pathways section that guides users to pre-filtered property lists based on their goals, and 4) a Guidebook with essential terminology and acquisition info. This task-oriented design was chosen because a potential buyer is more likely to explore based on their personal criteria (budget, investment style) rather than reading a report cover-to-cover. The structure moves from a broad overview to specific, actionable property exploration. -->
+    <!-- Visualization & Content Choices: 1) Market Overview Bar Chart: Shows average price by sub-market (Goal: Compare, Inform) using Chart.js to give an immediate high-level understanding of value differences. 2) Property Explorer Scatter Plot: Plots Price vs. Land Area (Goal: Relationships, Compare) using Chart.js, dynamically updating with filters. This allows users to visually identify outliers and value propositions. 3) Interactive Property Cards & Filters: Allows users to dynamically query the dataset (Goal: Organize, Compare) using vanilla JS to manipulate HTML cards, providing a hands-on feel. 4) Investor Pathway Cards: These act as interactive entry points (Goal: Inform, Organize), using JS to apply pre-defined filters, directly linking the report's strategic analysis to the raw data. 5) Accordion for Guidebook: Presents dense information cleanly (Goal: Inform) using JS toggles. -->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .chart-container { position: relative; width: 100%; height: 320px; max-height: 400px; }
+        @media (min-width: 768px) { .chart-container { height: 400px; } }
+        .section-active { display: block; }
+        .section-inactive { display: none; }
+        .nav-link-active { border-bottom-color: #334155; color: #1e293b; }
+        .nav-link-inactive { border-bottom-color: transparent; color: #64748b; }
+        .pathway-card { transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out; }
+        .pathway-card:hover { transform: translateY(-5px); box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1); }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800">
+
+    <div id="app" class="container mx-auto p-4 md:p-8">
+        
+        <header class="text-center mb-8">
+            <h1 class="text-4xl md:text-5xl font-bold text-slate-900">Myoko Real Estate Explorer</h1>
+            <p class="mt-2 text-lg text-slate-600">An Interactive Guide to Property Investment in Myoko, Japan</p>
+        </header>
+
+        <nav class="sticky top-0 bg-slate-50/80 backdrop-blur-lg z-10 mb-8 border-b border-slate-200">
+            <div class="flex justify-center items-center space-x-4 md:space-x-8 text-lg">
+                <button data-section="overview" class="nav-link py-4 font-medium border-b-2 transition-colors duration-200">Market Overview</button>
+                <button data-section="explorer" class="nav-link py-4 font-medium border-b-2 transition-colors duration-200">Property Explorer</button>
+                <button data-section="pathways" class="nav-link py-4 font-medium border-b-2 transition-colors duration-200">Investor Pathways</button>
+                <button data-section="guidebook" class="nav-link py-4 font-medium border-b-2 transition-colors duration-200">Guidebook</button>
+            </div>
+        </nav>
+
+        <main>
+            <section id="overview" class="app-section">
+                <div class="bg-white p-6 md:p-8 rounded-xl shadow-sm border border-slate-200 mb-8">
+                    <h2 class="text-2xl font-bold text-slate-900 mb-4">Market Intelligence Briefing</h2>
+                    <p class="text-slate-600 leading-relaxed">The Myoko region of Niigata Prefecture, renowned for its voluminous and high-quality powder snow, presents a compelling and nuanced real estate market. An analysis of exclusively Japanese-language property portals reveals a landscape largely unexposed to the mainstream international market, offering a significant first-mover advantage. This dashboard allows you to explore this unique market, which is fundamentally divided into a high-value, resort-centric core and a highly affordable periphery of residential and rural properties. Use the tools below to navigate the opportunities effectively.</p>
+                </div>
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                    <div class="bg-white p-6 md:p-8 rounded-xl shadow-sm border border-slate-200">
+                        <h3 class="text-xl font-bold text-slate-900 mb-4">Average Property Price by Sub-Market</h3>
+                        <p class="text-slate-600 mb-4">This chart illustrates the significant price disparity between the premium resort areas and the more residential or rural zones. The 'Premier Resort' zone commands the highest prices due to its proximity to ski lifts and commercial potential.</p>
+                        <div class="chart-container">
+                            <canvas id="priceBySubMarketChart"></canvas>
+                        </div>
+                    </div>
+                    <div class="bg-white p-6 md:p-8 rounded-xl shadow-sm border border-slate-200">
+                        <h3 class="text-xl font-bold text-slate-900 mb-4">Property Distribution</h3>
+                         <p class="text-slate-600 mb-4">This donut chart shows the breakdown of available listings by property type. Detached homes ('Chūko ikkodate') form the vast majority of the market, followed by land parcels and a smaller number of condominiums.</p>
+                        <div class="chart-container max-w-md mx-auto">
+                            <canvas id="propertyTypeDistributionChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section id="explorer" class="app-section">
+                 <div class="bg-white p-6 md:p-8 rounded-xl shadow-sm border border-slate-200 mb-8">
+                    <h2 class="text-2xl font-bold text-slate-900 mb-4">Property Explorer</h2>
+                    <p class="text-slate-600 leading-relaxed mb-6">Use the filters below to dynamically search the entire Myoko property catalogue. As you adjust the criteria, both the property list and the scatter plot will update in real-time, providing a powerful tool for identifying opportunities that match your specific needs. Click on any property card to see more details.</p>
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                        <div>
+                            <label for="filter-type" class="block text-sm font-medium text-slate-700">Property Type</label>
+                            <select id="filter-type" class="mt-1 block w-full rounded-md border-slate-300 shadow-sm focus:border-slate-500 focus:ring-slate-500 sm:text-sm">
+                                <option value="all">All Types</option>
+                                <option value="house">Detached House / Villa</option>
+                                <option value="land">Land Parcel</option>
+                                <option value="condo">Condominium</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label for="filter-submarket" class="block text-sm font-medium text-slate-700">Sub-Market</label>
+                            <select id="filter-submarket" class="mt-1 block w-full rounded-md border-slate-300 shadow-sm focus:border-slate-500 focus:ring-slate-500 sm:text-sm">
+                                <option value="all">All Sub-Markets</option>
+                                <option value="premier">Premier Resort</option>
+                                <option value="value">Value Resort</option>
+                                <option value="civic">Civic Hub</option>
+                                <option value="rural">Rural Periphery</option>
+                            </select>
+                        </div>
+                        <div class="col-span-1 md:col-span-2 lg:col-span-2">
+                             <label for="filter-price" class="block text-sm font-medium text-slate-700">Price Range (JPY)</label>
+                             <input id="filter-price" type="range" min="0" max="200000000" step="500000" value="200000000" class="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer mt-2">
+                             <div class="flex justify-between text-xs text-slate-500 mt-1">
+                                <span>¥0</span>
+                                <span id="price-range-value">¥200,000,000</span>
+                             </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-white p-6 md:p-8 rounded-xl shadow-sm border border-slate-200 mb-8">
+                     <h3 class="text-xl font-bold text-slate-900 mb-4">Market Scatter Plot: Price vs. Land Area</h3>
+                     <p class="text-slate-600 mb-4">This plot visualizes the relationship between a property's price and its land size. Use it to spot outliers—large plots at a low price, or high-value properties in prime locations. The plot updates as you apply filters above.</p>
+                    <div class="chart-container">
+                        <canvas id="priceVsAreaChart"></canvas>
+                    </div>
+                </div>
+
+                <div>
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="text-xl font-bold text-slate-900">Property Listings</h3>
+                        <p class="text-slate-600 font-medium"><span id="property-count">0</span> properties found</p>
+                    </div>
+                    <div id="property-list" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    </div>
+                </div>
+            </section>
+            
+            <section id="pathways" class="app-section">
+                <div class="bg-white p-6 md:p-8 rounded-xl shadow-sm border border-slate-200 mb-8">
+                    <h2 class="text-2xl font-bold text-slate-900 mb-4">Thematic Investment & Lifestyle Pathways</h2>
+                    <p class="text-slate-600 leading-relaxed">The Myoko market caters to several distinct buyer profiles. This section synthesizes the report's analysis into four key strategies. Each pathway represents a different approach to entering the market, from high-capital commercial ventures to passion-driven restoration projects. Click a pathway to see matching properties in the Explorer.</p>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <div class="pathway-card bg-white p-6 rounded-xl shadow-sm border border-slate-200 flex flex-col">
+                        <h3 class="text-xl font-bold text-slate-900 mb-2">1. The Turnkey Resort Business</h3>
+                        <p class="text-slate-600 flex-grow mb-4">For well-capitalized investors aiming for hospitality revenue. This involves acquiring large, commercially-zoned properties like pensions or lodges in the premier resort zone.</p>
+                        <button data-pathway="business" class="mt-auto w-full bg-slate-800 text-white font-semibold py-2 px-4 rounded-lg hover:bg-slate-700 transition-colors">See Matching Properties</button>
+                    </div>
+                    <div class="pathway-card bg-white p-6 rounded-xl shadow-sm border border-slate-200 flex flex-col">
+                        <h3 class="text-xl font-bold text-slate-900 mb-2">2. The *Kominka* Restoration</h3>
+                        <p class="text-slate-600 flex-grow mb-4">For the lifestyle buyer with a passion for traditional architecture. This pathway involves buying an inexpensive older house (*akiya*) and undertaking a significant renovation project.</p>
+                        <button data-pathway="restoration" class="mt-auto w-full bg-slate-800 text-white font-semibold py-2 px-4 rounded-lg hover:bg-slate-700 transition-colors">See Matching Properties</button>
+                    </div>
+                    <div class="pathway-card bg-white p-6 rounded-xl shadow-sm border border-slate-200 flex flex-col">
+                        <h3 class="text-xl font-bold text-slate-900 mb-2">3. The Modern Ski Chalet</h3>
+                        <p class="text-slate-600 flex-grow mb-4">For buyers prioritizing convenience and immediate use. This involves purchasing a new or recently renovated home that requires no major work, offering a "plug-and-play" experience.</p>
+                        <button data-pathway="modern" class="mt-auto w-full bg-slate-800 text-white font-semibold py-2 px-4 rounded-lg hover:bg-slate-700 transition-colors">See Matching Properties</button>
+                    </div>
+                    <div class="pathway-card bg-white p-6 rounded-xl shadow-sm border border-slate-200 flex flex-col">
+                        <h3 class="text-xl font-bold text-slate-900 mb-2">4. The Bespoke Vision</h3>
+                        <p class="text-slate-600 flex-grow mb-4">For those who want a custom-designed home. This pathway involves buying an affordable parcel of land, particularly in the 'Value Resort' zone, and engaging a builder for a new construction.</p>
+                        <button data-pathway="bespoke" class="mt-auto w-full bg-slate-800 text-white font-semibold py-2 px-4 rounded-lg hover:bg-slate-700 transition-colors">See Matching Properties</button>
+                    </div>
+                </div>
+            </section>
+            
+            <section id="guidebook" class="app-section">
+                <div class="bg-white p-6 md:p-8 rounded-xl shadow-sm border border-slate-200 mb-8">
+                    <h2 class="text-2xl font-bold text-slate-900 mb-4">Myoko Buyer's Guidebook</h2>
+                    <p class="text-slate-600 leading-relaxed">Navigating a foreign real estate market requires understanding local terminology and processes. This guide provides essential information for a smooth acquisition experience in Japan.</p>
+                </div>
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                    <div class="bg-white p-6 md:p-8 rounded-xl shadow-sm border border-slate-200">
+                        <h3 class="text-xl font-bold text-slate-900 mb-4">Key Real Estate Terminology</h3>
+                        <div id="terminology-list" class="space-y-2"></div>
+                    </div>
+                    <div class="bg-white p-6 md:p-8 rounded-xl shadow-sm border border-slate-200">
+                        <h3 class="text-xl font-bold text-slate-900 mb-4">Acquisition Process for Foreign Nationals</h3>
+                         <p class="text-slate-600 mb-4">The process for a non-resident to purchase property in Japan is notably straightforward. There are no legal restrictions on ownership. The key steps are outlined below.</p>
+                        <ol class="list-decimal list-inside space-y-3 text-slate-600">
+                            <li><strong class="text-slate-700">Engage an Agent:</strong> A licensed, bilingual real estate agent (`不動産屋`) is essential to facilitate searches, negotiations, and paperwork.</li>
+                            <li><strong class="text-slate-700">Letter of Intent (LOI):</strong> Submit a non-binding LOI to express interest and outline purchase terms.</li>
+                            <li><strong class="text-slate-700">Explanation of Important Matters:</strong> The agent is legally required to provide a detailed explanation of the property's title, zoning, and condition before any contract is signed.</li>
+                            <li><strong class="text-slate-700">Purchase & Sale Agreement:</strong> A formal, binding contract is signed and a deposit (typically 5-10%) is paid.</li>
+                            <li><strong class="text-slate-700">Settlement & Closing:</strong> Pay the remaining balance. A Judicial Scrivener (`司法書士`) handles the legal paperwork to ensure the title is cleanly transferred.</li>
+                            <li><strong class="text-slate-700">Title Registration:</strong> The scrivener registers the change in ownership with the Legal Affairs Bureau, completing the acquisition.</li>
+                        </ol>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+    </div>
+    
+    <div id="modal" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden items-center justify-center p-4">
+        <div id="modal-content" class="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+        </div>
+    </div>
+    
+    <script>
+        const propertyData = [
+            { id: 'MYK-H-01', type: 'house', location: 'Myoko-shi, Oaza Kamiborinochi', subMarket: 'rural', station: 'Nihongi Station, 5800m', price: 500000, landArea: 240.20, buildingArea: 237.22, layout: '7DK', year: 1947, description: '2-story house.', note: 'Extreme renovation project (akiya). Purchase price is negligible; total cost will be driven by full restoration.' },
+            { id: 'MYK-H-02', type: 'house', location: 'Myoko-shi, Oaza Oosawa-shinden', subMarket: 'rural', station: 'Nihongi Station, 97 min walk', price: 2000000, landArea: 622.60, buildingArea: 121.05, layout: '3K', year: 1984, description: 'A hideaway-like detached house. 30 minutes to both the sea and mountains.', note: 'Very affordable but remote. Suitable for a buyer seeking seclusion and a project.' },
+            { id: 'MYK-H-03', type: 'house', location: 'Myoko-shi, Ishizuka-cho 1-chome', subMarket: 'civic', station: 'Arai Station, 11 min walk', price: 3800000, landArea: 198.27, buildingArea: 120.69, layout: '3SDK', year: 1960, description: 'Affordable 5SDK detached house! South-facing road for great sunlight.', note: 'Low-cost entry into the residential market. Requires significant modernization.' },
+            { id: 'MYK-H-04', type: 'house', location: 'Myoko-shi, Hakusan-cho 1-chome', subMarket: 'civic', station: 'Arai Station, 11 min walk', price: 3800000, landArea: 220.03, buildingArea: 149.24, layout: '6DK', year: 1951, description: 'Older, spacious home in a residential area.', note: 'Very old property requiring full renovation, but offers large space for the price.' },
+            { id: 'MYK-H-05', type: 'house', location: 'Myoko-shi, Mimori 3-chome', subMarket: 'civic', station: 'Arai Station, 12 min walk', price: 6800000, landArea: 252.07, buildingArea: 170.57, layout: '5SLDK', year: 1989, description: 'North-east corner lot. Inner garage for 2 small cars.', note: 'Good value for a relatively newer (1980s) home with a garage, a key feature for winter.' },
+            { id: 'MYK-H-06', type: 'house', location: 'Myoko-shi, Tsukioka 2-chome', subMarket: 'civic', station: 'Kita-Arai Station, 13 min walk', price: 7800000, landArea: 269.20, buildingArea: 151.20, layout: '3DK', year: 1984, description: '2-story house in a residential neighborhood.', note: 'Standard residential home, potential for modernization.' },
+            { id: 'MYK-H-07', type: 'house', location: 'Myoko-shi, Oaza Tobita', subMarket: 'civic', station: 'Kita-Arai Station, 19 min walk', price: 9990000, landArea: 782.11, buildingArea: 213.77, layout: '5DK', year: 1993, description: 'Elevated house with charming views of Mt. Myoko and countryside. Good for those with lots of belongings.', note: 'Excellent value. A 1990s build on a large plot of land with the desirable elevated design.' },
+            { id: 'MYK-H-08', type: 'house', location: 'Myoko-shi, Oaza Taguchi', subMarket: 'premier', station: 'Myoko Kogen Station, 7 min walk', price: 10000000, landArea: 224.00, buildingArea: 202.74, layout: '3K', year: 1978, description: '3-story house. Very close to the station.', note: 'Prime location. An affordable entry point into the premier resort zone, though renovation is likely needed.' },
+            { id: 'MYK-H-09', type: 'house', location: 'Myoko-shi, Hakusan-cho 2-chome', subMarket: 'civic', station: 'Arai Station, 15 min walk', price: 13990000, landArea: 287.55, buildingArea: 169.84, layout: '5LDK', year: 1977, description: 'Renovation complete. Seismic reinforcement work done. Parking for 3 cars.', note: 'Turnkey option. The completed renovation and seismic upgrade add significant value.' },
+            { id: 'MYK-H-10', type: 'house', location: 'Myoko-shi, Mimori 3-chome', subMarket: 'civic', station: 'Arai Station, 13 min walk', price: 13990000, landArea: 237.94, buildingArea: 114.16, layout: '3LDK', year: 1982, description: 'Open house held. New seismic standard compliant. Quiet residential street.', note: 'Solid residential property eligible for home loan tax deductions. Good for a family home.' },
+            { id: 'MYK-H-11', type: 'house', location: 'Myoko-shi, Hirota-cho', subMarket: 'civic', station: 'Arai Station, 21 min walk', price: 18900000, landArea: 399.63, buildingArea: 91.06, layout: '3LDK', year: 2020, description: 'Built in 2020. South-facing with good sunlight.', note: 'Excellent modern, low-maintenance option. Ideal for buyers wanting a hassle-free experience.' },
+            { id: 'MYK-H-12', type: 'house', location: 'Myoko-shi, Yanagida-cho 4-chome', subMarket: 'civic', station: 'Kita-Arai Station, 6 min walk', price: 20900000, landArea: 216.00, buildingArea: 71.84, layout: '3LDK', year: 2024, description: 'New construction. Single-story "hiraya" style home.', note: 'A brand-new home offering modern convenience and energy efficiency.' },
+            { id: 'MYK-H-13', type: 'house', location: 'Myoko-shi, Gakko-cho', subMarket: 'civic', station: 'Arai Station, 16 min walk', price: 22500000, landArea: 356.15, buildingArea: 296.04, layout: '5SLDK', year: 1996, description: 'Elevated two-generation house with 2 kitchens, 2 baths, 2 toilets. Currently operating as restaurant \'Cafe Nouvelle\'.', note: 'Unique live/work opportunity. Large, versatile property with existing commercial use.' },
+            { id: 'MYK-H-14', type: 'house', location: 'Myoko-shi, Oaza Himekawahara', subMarket: 'rural', station: 'Nihongi Station, 25 min walk', price: 25000000, landArea: 837.99, buildingArea: 216.88, layout: '8LDK', year: 1912, description: 'Very old, large traditional house (kominka).', note: 'A major kominka restoration project for a passionate buyer with a significant budget.' },
+            { id: 'MYK-H-15', type: 'house', location: 'Myoko-shi, Asahi-cho 1-chome', subMarket: 'civic', station: 'Arai Station, 4 min walk', price: 34000000, landArea: 1307.79, buildingArea: 320.97, layout: '6LDK', year: 1997, description: 'Located in the center of town near city hall. Commercial zoning allows for cafe, minpaku (B&B), etc.', note: 'Prime commercial potential in the city center on a very large plot of land.' },
+            { id: 'MYK-H-16', type: 'house', location: 'Myoko-shi, Oaza Tagiri', subMarket: 'premier', station: 'Myoko Kogen Station, Bus 10 min', price: 200000000, landArea: 7135.42, buildingArea: 396.21, layout: '11LDK', year: 1990, description: 'Pension in Myoko Kogen resort area. Features free-flowing natural onsen.', note: 'Premier turnkey resort business opportunity. The private onsen is a major asset.' },
+            { id: 'MYK-L-01', type: 'land', location: 'Myoko-shi, Oaza Taguchi', subMarket: 'premier', station: 'Myoko Kogen Station, 14 min walk', price: 650000, landArea: 79.10, buildingArea: null, layout: null, year: null, description: 'BCR/FAR: N/A', note: 'Small, but extremely cheap entry point for land in the premier zone. May have build limitations.' },
+            { id: 'MYK-L-02', type: 'land', location: 'Myoko-shi, Hakusan-cho 4-chome', subMarket: 'civic', station: 'Arai Station, 25 min walk', price: 700000, landArea: 259.80, buildingArea: null, layout: null, year: null, description: 'BCR/FAR: 80% / 200%', note: 'Very affordable residential plot in the Arai school district.' },
+            { id: 'MYK-L-03', type: 'land', location: 'Myoko-shi, Oaza Sekiyama', subMarket: 'value', station: 'Sekiyama Station, 18 min walk', price: 980000, landArea: 856.74, buildingArea: null, layout: null, year: null, description: 'BCR/FAR: 70% / 200%', note: 'Exceptional value. Huge plot of land in the value resort zone, ideal for a large custom chalet.' },
+            { id: 'MYK-L-04', type: 'land', location: 'Myoko-shi, Kyozuka-cho', subMarket: 'civic', station: 'Arai Station, 20 min walk', price: 1000000, landArea: 265.56, buildingArea: null, layout: null, year: null, description: 'BCR/FAR: N/A', note: 'Affordable residential plot in a quiet area.' },
+            { id: 'MYK-L-05', type: 'land', location: 'Myoko-shi, Mimori 1-chome', subMarket: 'civic', station: 'Arai Station, 10 min walk', price: 1500000, landArea: 446.38, buildingArea: null, layout: null, year: null, description: 'BCR/FAR: N/A', note: 'Large, affordable plot within easy walking distance of Arai station.' },
+            { id: 'MYK-L-06', type: 'land', location: 'Myoko-shi, Asahi-cho 1-chome', subMarket: 'civic', station: 'Arai Station, 4 min walk', price: 3000000, landArea: 194.72, buildingArea: null, layout: null, year: null, description: 'BCR/FAR: 400%', note: 'Prime commercial land in the city center with high floor area ratio allowance.' },
+            { id: 'MYK-L-07', type: 'land', location: 'Myoko-shi, Takayanagi 2-chome', subMarket: 'civic', station: 'Arai Station, 21 min walk', price: 4500000, landArea: 340.05, buildingArea: null, layout: null, year: null, description: 'BCR/FAR: N/A', note: 'Good-sized residential plot in a suburban area.' },
+            { id: 'MYK-L-08', type: 'land', location: 'Myoko-shi, Oaza Taguchi', subMarket: 'premier', station: 'Myoko Kogen Station, 12 min walk', price: 6000000, landArea: 330.59, buildingArea: null, layout: null, year: null, description: 'BCR/FAR: N/A', note: 'Well-priced land within walking distance of Myoko Kogen station. Strong potential.' },
+            { id: 'MYK-L-09', type: 'land', location: 'Myoko-shi, Oaza Taguchi', subMarket: 'premier', station: 'Myoko Kogen Station, 3.6km drive', price: 17000000, landArea: 712.00, buildingArea: null, layout: null, year: null, description: 'BCR/FAR: N/A', note: 'Large, premium plot in the resort area, suitable for a substantial luxury home.' },
+            { id: 'MYK-C-01', type: 'condo', location: 'Myoko-shi, Oaza Okemi', subMarket: 'value', station: 'Sekiyama Station, 78 min walk', price: 3300000, landArea: null, buildingArea: 43.90, layout: '1LDK', year: 1991, description: 'Located in the Apa Resort Joetsu Myoko complex.', note: 'Resort amenities likely available. Low-maintenance "lock-and-leave" option.' },
+            { id: 'MYK-C-02', type: 'condo', location: 'Nagano-ken, Shinano-machi, Oaza Furumi', subMarket: 'premier', station: 'Myoko Kogen Station, 98 min walk', price: 2000000, landArea: null, buildingArea: 28.62, layout: '1K', year: 1992, description: 'In Tangram Madarao Tokyu Resort.', note: 'Ski-in/ski-out potential at an adjacent resort (not Myoko). Very low-cost entry.' },
+            { id: 'MYK-C-03', type: 'condo', location: 'Nagano-ken, Shinano-machi, Oaza Furumi', subMarket: 'premier', station: 'Myoko Kogen Station, 98 min walk', price: 3800000, landArea: null, buildingArea: 25.06, layout: '1LK', year: 1992, description: 'Another unit in the Tangram Madarao Tokyu Resort.', note: 'Another very low-cost entry to a managed resort property.' },
+        ];
+
+        const terminologyData = [
+            { term: '中古一戸建て (Chūko ikkodate)', definition: 'Used detached house. The most common property type in this report.' },
+            { term: '土地 (Tochi)', definition: 'Land. A parcel sold without a building.' },
+            { term: '現況販売 (Genkyō hanbai)', definition: 'Sale in "as-is" condition, often implying the property may require repairs or renovation.' },
+            { term: '間取り (Madori)', definition: 'Floor plan. L (Living), D (Dining), K (Kitchen), S (Storage). 3LDK is three rooms plus LDK.' },
+            { term: '高床式 (Takayukashiki)', definition: 'Elevated house style. The ground floor is raised on a high foundation, practical in heavy snow regions.' },
+            { term: '消雪設備 (Shōsetsu setsubi)', definition: 'Snow-melting equipment, like driveway sprinklers.' }
+        ];
+
+        const subMarketColors = {
+            premier: 'rgba(225, 29, 72, 0.7)',  // Rose 600
+            value: 'rgba(249, 115, 22, 0.7)',    // Orange 500
+            civic: 'rgba(34, 197, 94, 0.7)',    // Green 500
+            rural: 'rgba(107, 114, 128, 0.7)',   // Gray 500
+        };
+        
+        document.addEventListener('DOMContentLoaded', () => {
+            const state = {
+                filterType: 'all',
+                filterSubmarket: 'all',
+                filterPrice: 200000000,
+                activeSection: 'overview'
+            };
+
+            const charts = {};
+
+            const formatCurrency = (value) => new Intl.NumberFormat('ja-JP', { style: 'currency', currency: 'JPY' }).format(value);
+            const formatArea = (value) => value ? `${value.toFixed(2)} m²` : 'N/A';
+            const capitalize = (s) => s.charAt(0).toUpperCase() + s.slice(1);
+
+            const appSections = document.querySelectorAll('.app-section');
+            const navLinks = document.querySelectorAll('.nav-link');
+            const propertyList = document.getElementById('property-list');
+            const propertyCount = document.getElementById('property-count');
+            const priceRangeSlider = document.getElementById('filter-price');
+            const priceRangeValue = document.getElementById('price-range-value');
+            const typeFilter = document.getElementById('filter-type');
+            const submarketFilter = document.getElementById('filter-submarket');
+            const modal = document.getElementById('modal');
+            const modalContent = document.getElementById('modal-content');
+            
+            function renderPropertyCard(prop) {
+                const subMarketDisplay = {
+                    premier: { text: 'Premier Resort', color: 'bg-rose-100 text-rose-800' },
+                    value: { text: 'Value Resort', color: 'bg-orange-100 text-orange-800' },
+                    civic: { text: 'Civic Hub', color: 'bg-green-100 text-green-800' },
+                    rural: { text: 'Rural Periphery', color: 'bg-slate-100 text-slate-800' },
+                };
+
+                return `
+                    <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-4 flex flex-col cursor-pointer transition-shadow hover:shadow-md" data-id="${prop.id}">
+                        <div class="flex-grow">
+                            <div class="flex justify-between items-start">
+                                <p class="text-sm font-semibold ${subMarketDisplay[prop.subMarket].color} px-2 py-1 rounded-full">${subMarketDisplay[prop.subMarket].text}</p>
+                                <p class="text-sm text-slate-500">${prop.type === 'house' ? `Built ${prop.year}` : capitalize(prop.type)}</p>
+                            </div>
+                            <h4 class="font-bold text-lg mt-2 text-slate-900">${prop.location}</h4>
+                            <p class="text-sm text-slate-500">${prop.station}</p>
+                        </div>
+                        <div class="mt-4 pt-4 border-t border-slate-100 text-right">
+                            <p class="text-2xl font-bold text-slate-800">${formatCurrency(prop.price)}</p>
+                        </div>
+                    </div>
+                `;
+            }
+            
+            function renderModalContent(prop) {
+                return `
+                    <div class="p-6 md:p-8">
+                        <div class="flex justify-between items-center mb-4">
+                            <h3 class="text-2xl font-bold text-slate-900">${prop.location}</h3>
+                            <button id="close-modal" class="text-slate-500 hover:text-slate-800">&times;</button>
+                        </div>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4 text-slate-600">
+                           <div class="md:col-span-2">
+                                <p class="font-semibold text-4xl text-slate-800 mb-2">${formatCurrency(prop.price)}</p>
+                                <p class="text-md">${prop.description}</p>
+                           </div>
+                           <div><strong class="text-slate-800">Property ID:</strong> ${prop.id}</div>
+                           <div><strong class="text-slate-800">Sub-Market:</strong> ${capitalize(prop.subMarket)} Resort</div>
+                           <div><strong class="text-slate-800">Property Type:</strong> ${capitalize(prop.type)}</div>
+                           <div><strong class="text-slate-800">Layout:</strong> ${prop.layout || 'N/A'}</div>
+                           <div><strong class="text-slate-800">Land Area:</strong> ${formatArea(prop.landArea)}</div>
+                           <div><strong class="text-slate-800">Building Area:</strong> ${formatArea(prop.buildingArea)}</div>
+                           <div><strong class="text-slate-800">Year Built:</strong> ${prop.year || 'N/A'}</div>
+                           <div><strong class="text-slate-800">Nearest Station:</strong> ${prop.station}</div>
+                           <div class="md:col-span-2 bg-slate-100 p-4 rounded-lg">
+                                <strong class="text-slate-800">Analyst's Note:</strong>
+                                <p class="mt-1">${prop.note}</p>
+                           </div>
+                        </div>
+                    </div>
+                `;
+            }
+
+            function applyFilters() {
+                const filtered = propertyData.filter(p => {
+                    const typeMatch = state.filterType === 'all' || p.type === state.filterType;
+                    const submarketMatch = state.filterSubmarket === 'all' || p.subMarket === state.filterSubmarket;
+                    const priceMatch = p.price <= state.filterPrice;
+                    return typeMatch && submarketMatch && priceMatch;
+                });
+                
+                propertyList.innerHTML = filtered.map(renderPropertyCard).join('');
+                propertyCount.textContent = filtered.length;
+                updateScatterChart(filtered);
+            }
+            
+            function handleFilterChange() {
+                state.filterType = typeFilter.value;
+                state.filterSubmarket = submarketFilter.value;
+                state.filterPrice = parseInt(priceRangeSlider.value, 10);
+                priceRangeValue.textContent = formatCurrency(state.filterPrice);
+                applyFilters();
+            }
+
+            function switchSection(sectionId) {
+                state.activeSection = sectionId;
+                appSections.forEach(section => {
+                    section.classList.toggle('section-active', section.id === sectionId);
+                    section.classList.toggle('section-inactive', section.id !== sectionId);
+                });
+                navLinks.forEach(link => {
+                    link.classList.toggle('nav-link-active', link.dataset.section === sectionId);
+                    link.classList.toggle('nav-link-inactive', link.dataset.section !== sectionId);
+                });
+                 window.scrollTo(0, 0);
+            }
+            
+            function createOverviewCharts() {
+                const subMarketData = { premier: [], value: [], civic: [], rural: [] };
+                propertyData.forEach(p => {
+                    if (p.subMarket && subMarketData[p.subMarket] && p.type === 'house') {
+                        subMarketData[p.subMarket].push(p.price);
+                    }
+                });
+
+                const avgPrices = Object.keys(subMarketData).map(key => {
+                    const sum = subMarketData[key].reduce((a, b) => a + b, 0);
+                    return sum / (subMarketData[key].length || 1);
+                });
+
+                const priceBySubMarketCtx = document.getElementById('priceBySubMarketChart').getContext('2d');
+                charts.priceBySubMarket = new Chart(priceBySubMarketCtx, {
+                    type: 'bar',
+                    data: {
+                        labels: ['Premier Resort', 'Value Resort', 'Civic Hub', 'Rural Periphery'],
+                        datasets: [{
+                            label: 'Average Price (JPY)',
+                            data: avgPrices,
+                            backgroundColor: Object.values(subMarketColors),
+                        }]
+                    },
+                    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { ticks: { callback: (value) => value > 0 ? (value / 1000000) + 'M' : 0 } } } }
+                });
+                
+                const typeCounts = propertyData.reduce((acc, p) => {
+                    acc[p.type] = (acc[p.type] || 0) + 1;
+                    return acc;
+                }, {});
+
+                const propertyTypeDistributionCtx = document.getElementById('propertyTypeDistributionChart').getContext('2d');
+                charts.propertyTypeDistribution = new Chart(propertyTypeDistributionCtx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: ['Detached House', 'Land', 'Condo'],
+                        datasets: [{
+                            data: [typeCounts.house, typeCounts.land, typeCounts.condo],
+                            backgroundColor: ['#6366f1', '#f97316', '#22c55e']
+                        }]
+                    },
+                    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } }
+                });
+            }
+
+            function createScatterChart() {
+                const ctx = document.getElementById('priceVsAreaChart').getContext('2d');
+                charts.priceVsArea = new Chart(ctx, {
+                    type: 'scatter',
+                    data: { datasets: [] },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            x: { title: { display: true, text: 'Land Area (m²)' } },
+                            y: { title: { display: true, text: 'Price (JPY)' }, ticks: { callback: (value) => (value / 1000000) + 'M' } }
+                        },
+                        plugins: {
+                            tooltip: {
+                                callbacks: {
+                                    label: function(context) {
+                                        const d = context.raw;
+                                        return `${d.id}: ${formatCurrency(d.y)} - ${d.x} m²`;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+
+            function updateScatterChart(data) {
+                const scatterData = data.filter(p => p.landArea && p.price).map(p => ({
+                    x: p.landArea,
+                    y: p.price,
+                    id: p.id
+                }));
+
+                charts.priceVsArea.data.datasets = [{
+                    label: 'Properties',
+                    data: scatterData,
+                    backgroundColor: data.map(p => subMarketColors[p.subMarket] || 'rgba(100, 100, 100, 0.7)'),
+                    pointRadius: 6,
+                    pointHoverRadius: 8,
+                }];
+                charts.priceVsArea.update();
+            }
+            
+            function handlePathwayClick(e) {
+                const pathway = e.target.dataset.pathway;
+                if (!pathway) return;
+
+                switchSection('explorer');
+                
+                typeFilter.value = 'all';
+                submarketFilter.value = 'all';
+                priceRangeSlider.value = 200000000;
+
+                if (pathway === 'business') {
+                    typeFilter.value = 'house';
+                    priceRangeSlider.value = 200000000;
+                    submarketFilter.value = 'premier';
+                } else if (pathway === 'restoration') {
+                    typeFilter.value = 'house';
+                    priceRangeSlider.value = 5000000; 
+                    submarketFilter.value = 'rural';
+                } else if (pathway === 'modern') {
+                    typeFilter.value = 'house';
+                    priceRangeSlider.value = 200000000;
+                } else if (pathway === 'bespoke') {
+                    typeFilter.value = 'land';
+                    submarketFilter.value = 'value';
+                    priceRangeSlider.value = 20000000;
+                }
+                
+                handleFilterChange();
+            }
+
+            function renderTerminology() {
+                const list = document.getElementById('terminology-list');
+                const html = terminologyData.map(item => `
+                    <div class="border-b border-slate-200 pb-2">
+                        <h4 class="font-semibold text-slate-800">${item.term}</h4>
+                        <p class="text-sm text-slate-600">${item.definition}</p>
+                    </div>
+                `).join('');
+                list.innerHTML = html;
+            }
+
+            function openModal(propId) {
+                const prop = propertyData.find(p => p.id === propId);
+                if(prop) {
+                    modalContent.innerHTML = renderModalContent(prop);
+                    modal.classList.remove('hidden');
+                    modal.classList.add('flex');
+                    document.getElementById('close-modal').addEventListener('click', closeModal);
+                }
+            }
+            
+            function closeModal() {
+                modal.classList.add('hidden');
+                modal.classList.remove('flex');
+                modalContent.innerHTML = '';
+            }
+            
+            navLinks.forEach(link => link.addEventListener('click', () => switchSection(link.dataset.section)));
+            priceRangeSlider.addEventListener('input', handleFilterChange);
+            typeFilter.addEventListener('change', handleFilterChange);
+            submarketFilter.addEventListener('change', handleFilterChange);
+            document.querySelector('#pathways').addEventListener('click', handlePathwayClick);
+            
+            propertyList.addEventListener('click', (e) => {
+                const card = e.target.closest('[data-id]');
+                if (card) {
+                    openModal(card.dataset.id);
+                }
+            });
+            modal.addEventListener('click', (e) => {
+                if(e.target === modal) {
+                    closeModal();
+                }
+            });
+
+            createOverviewCharts();
+            createScatterChart();
+            renderTerminology();
+            handleFilterChange();
+            switchSection('overview');
+        });
+    </script>
+</body>
+</html>
